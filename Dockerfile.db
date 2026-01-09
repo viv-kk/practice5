@@ -1,0 +1,40 @@
+FROM ubuntu:22.04 AS builder
+
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    g++ \
+    make \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+COPY CMakeLists.txt ./
+COPY *.cpp ./
+COPY *.h ./
+
+RUN mkdir -p build && \
+    cd build && \
+    cmake .. && \
+    make db_server && \
+    cp db_server /build/ && \
+    cd .. && \
+    rm -rf build
+
+FROM ubuntu:22.04
+
+RUN apt-get update && apt-get install -y \
+    libstdc++6 \
+    netcat-openbsd \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /build/db_server /app/db_server
+
+RUN chmod +x /app/db_server
+
+WORKDIR /app/data
+
+EXPOSE 8080
+
+CMD ["/app/db_server", "8080", "5"]
+
